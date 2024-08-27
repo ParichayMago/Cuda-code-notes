@@ -1,0 +1,271 @@
+todos**
+create matrix multi from scrach using cuda
+revisit chaptre 1-3 and take notes
+
+---------------NOTES---------------
+***chapter-4 - Computer architecture and scheduling=>
+
+**Architecture of Morden GPU
+-A cuda-gpu consists of an array of highly threaded Streaming Multiprocessors(SMs)??
+Each SM has several processing units => called streaming processors/cuda cores.
+
+-SM consists of "Memory" and "Global Memory"?? Which i am not sure now how they work but
+Global memory is uses something as HBM or HBM2 consists of DRAM modules.
+
+
+
+***Block Scheduling
+-Cuda kernal called => Cuda lauch grid of threads => Kernal code executed => threads are assigned to SMs
+(All the threads in the block are assigned to same SM), multiple blocks can be assigned to the same sm.
+
+-Runtime system tracks the blocks that needed to be executed and assign new blocks to SM as they get free.
+
+-This feature ensure all the threads in a block are executed simult.. on the same sm.
+
+
+
+**Synchronization and transparant scalability
+-Barrior sync of threads is done by calling __syncthreads();
+it ensures all the threads in the same block are execting the same code.
+
+-during application of an if-else statement in a kernal, no possible outcomes should have an individual barr sync 
+  
+-A thread never arriving at the __syncthreads(); point is known as deadlock;
+
+-All the threads in a block have to be assigned to the same SM, and simultanusmly all the resouces should be given
+
+-This stops not having too barrier sync with other threads on other blocks.
+
+-But this allows an independent runtime of blocks. Many/Less blocks can be exectured in the 
+same code on diff hardware
+
+-it gives ability to execute the same code and kernel on diff hardwares like mobile and pc
+this is known as "transparent Scalability";
+
+
+
+**warps and SIMD Hardware
+-A warp is the unit of thread schdulling in SMs.
+
+-The block is divided into 32-thread unit known as warps.
+
+-Blocks are partitioned into warps based on the basis of thread indices.
+
+-If a blcok is 1-D array then the nth warp starting value starts from 32 * n and ends on 32 * (n+1) - 1.
+
+-The empty values are padded with inactive threads if the totall threads in the block is not div by 32.
+
+-For multiy dim block. All the threads in y=0 and z=0 are placed first in inc order w.r.t to threadIndx.x
+
+-After executing last thread of x the Z is inc by 1 till the x reachers the last thread, after 
+all the threads are exeuted on the y = 0 floor the y is increamented by 1.
+Remember z and x gets reseted to 0 after inc of y, and only x gets reseted to 0 after increment of of z. 
+
+-An SM is desigend to execute all threads in a warp. Using Single Instruction Multi Data (SIMD) Model, 
+SMs are grouped together to form "processing blocks". Every Processing Block consists of 8 cores. Every 
+ProcessingBlock share an instruction fetch/dispatch unit.
+
+-An A100 SM consists of 64 cores, Every Processing block contains 16 cores each. Thus 64/16 = 4 PB per SM.
+
+-Threads in the same warp assigned to same PB(processing block). 
+warp => SM => Processing Block => Cores
+
+
+
+**Control divergence
+-when thread in the same warp follow different execution path we say it shows control divergence
+
+4.6
+**Warp schduling and latency tolerance
+
+Why more threads are assigned to an SM then the number of cores in the SM?
+-More Threads are assigned to an SM beacuase this is how GPUs tolerate long latency operation such as global memory access. 
+When an instruction is passed throguh, the warp needs to wait for the result of a previusly initiated long-latency operation.
+The warp is not selected if it's dependednt on the on going prevus operation, instead the warp which is ready to go is exectued .
+The more then one warp is ready to execute the priority mechanism is initiated to select a warp.
+More threads are initialised to SM to maximise the chance of finding a ready to go warp faster.
+
+What is latency tolerance?
+-Latency tolerace is when putting a warp as aside to give it more time to execute while the exectutioner exectues other ready to go warps.
+
+What is zero-overhead thread schduling?
+-Zero overhead means no wastage of time, executing as soon as werp is ready.
+
+4.7
+Q: **What is occupancy?
+occupancy refers to the ratio of number of warp assigned to SM and the maximum number of werps which can be hold by an Sm
+
+
+An Sm can dynamically partition a block to fit the maxiumum capaisty of threads at a time.
+
+
+size of a warp is generally 32 can be changed.
+
+
+Q: What is Performance Cliff?
+A performance cliff is instaniuslly reduction in performance due to small change in some parameter. 
+for Example threads or number of registors. pg:110
+
+Q: How dynamically partition thread slots among bloks makes SMs versatile? pg:108
+The SM block can hold some threshold value of threads. If exceddes it wont work.
+
+For example A100 can support 
+-32 blocks per sm
+-64 werps
+-2048 threads (1 werp = 32 threads)
+-1024 threads per block (max value allowed)
+
+If a grid is launched with 1024 thread per block, a single SM of A100 will be only able to hold 2 blocks. 
+if a grid is launched with 512  thread per block, a single SM of A100 will be only able to hold 4 blocks.
+
+hence 
+1024 -> 2 blocks
+512  -> 4 blocks
+256  -> 8 blocks
+....
+...
+..
+They can exectue small number of blocks with large number of threads or visa versa.
+These dynamic changes in number of blocks per SM ensures the full utilization of GPUs time and resouce.
+
+Q: What if the maximum number of threads is not devidale to the value of number of threads per block
+-If the value 2048 is not divisible by the totall threads in the block then the questionet of the 2048/threads in block. 
+the remaining threads are then exectued later.
+
+
+-as 2048threads are max avalible on Sm, the SM can run 2 blcoks simultanusly with thread size of 1024 per block. That should be obvius
+
+Q: Writ the config of the A100 SM:
+-Compute capability => 8.0
+-2048 max threads
+-4PB
+-cores => 16 cores per PB
+-registors =? 65536 
+
+Q: how many threads a PU can take?
+
+
+
+-----------------------------------------------------------
+chater-5 Memory architecture and data allocation.
+
+The matrix multiplcation use 2 FLop's to 8 Byte
+
+
+the A100 Gpu has a peak global memory bandwidth of 1555GB/sec.
+an A100 gpu can do 19500 Gflops
+
+tensor cores
+: tensor cores are usefull for accelarating matrix multiplication operations. 
+
+
+Cuda memory types 5.2
+-------
+
+
+*Global Memroy: This type of memory can be written and read by the host. The gloabl memory can also be written by device.
+
+*Constant Memo: This type of memory can be written and read by the host. It supports short latency, high-bandwidth, read-only access by the device.
+The size of constant memory is limited to 64 KB per multiprocessor
+
+
+*Local Memory: It Is placed on the global memory. similar latency but it dosent share access around the threads. Each thread has its own space in the heap. 
+
+Onchip Memroy: Register and Shared memory->
+
+Registers and Shared Memory:
+They are a on chip memory which can be accessed by high frequecy and high bandwidth and prellely.
+
+Registers are stored on the individual thread.
+Each thread can access its own register
+
+-A kernal uses Registers to hold values of variables that are private to each thread.
+
+-Shared memory are allocated to thread blocks.
+
+
+--DIFFERENCE BETWEEN GPU AND CPU ARCHITECTURE (PG: 120)
+* GPU and CPU have different register architecture.
+* GPU achive zero-overhead schduling by keeping the register of all the threads that are schduled on the processing block in 
+the processing block register file.
+* CPU thread switching require its threads to store its register in the memory and restore the regisster of the incoming thread
+from memory
+* As we also know SM provision some extra regisster per threadss, but CPU register archt dedicates a fixed no. of register per thread
+regardless of its actual demand.
+
+what happens when memory req by the thread is not enough by register?
+The thread then stores the spilled memory in the local memory which is allocated by the Global memory,
+since it is provided by the global memory it would have the same latency as the global memroy.
+
+Q: Explain the usage of Register filess?
+ According to Von Neumann model, The register files are on the chip with drasitcally betweer memroy bandwidth and latency compared to 
+ Global moemory. 
+ Also to access register moemory fewer instructions are req compared to gloabl memory. 
+ 
+ fadd r1, r2, r3
+
+ fadd is the instruction to add two floating point number in ths case r2 and r3 numbers represented by r2 and r3. to store in r1.
+ The r1 is in register itself thus no memory search is req and make it avalible to ALU after operation is done.
+
+ Meanwhile if the input operand is allocated in the gloabl memory, the processoer needs to perform a memory load operation to make 
+ the operand value avalible to the ALU.
+ (operand refers to the input value in the ALU according to perplexity)
+
+ load r2, r4
+ fadd r1, r2, r3
+
+ since r4 was in gloabl memory an additional instruction was req to make r4 avalible in the form of r2 to the ALU.
+
+ the enery req to get value from gloabl memory is an oder magnitute lesss then accessing it from register memory
+---------------x-------------------------
+
+Q: Comman tradeoffs between Shared memory and Registers
+*The shared memory is shared between block of threads instead of individual thread like register
+*An extra instruction is req to access var in the shared memory for ALU operation. (memory load operation)
+*Much lower latency then accessing from gloab memo but much higher then register file and lower bandwidth then register.
+*shared memory is also known as screatch pad memory.
+
+Q: Difference between Global memory and Constant Memory?
+*The max size of constant memroy is 64kb per multi-processor, while global memory have the size in GBs
+*Lower latency then gloabl memory but higher then other on chip memory
+*The values can be cahched in canse of repeated patterns which can be accessed wiht low latency and high bandwidth.
+*While global memory dosent cahch and it is expensive to retrive data from global memmory again and again
+*A cache miss is also really expensive in constant memory.
+
+
+Q: Default memory declaration Memory, Scope, Lifetime: __dev__ => __device__
+Var declaration                                   Memory      Scope     Lifetime
+1) Autormatic variables other then array.       Register      Thread      Grid
+2) Automatic array varibale                       local       Thread      Grid
+3) __dev__ __shared int SharedVar                 shared       Block      Grid 
+4) __dev__ int Globalvar                          Global       Grid     application       
+5) __dev__ __const__ int ConstVar                 Const        Grid     application
+
+**If a variable’s scope is a single thread, a private version of
+the variable will be created for every thread
+
+Scalar variables are those variables which are not arrays (by array it menat array of threads). (i suppose).
+--------------------------x-------------------------
+
+5.3 Tiling for reduced memory traffic
+Instead of Multiple times loading data from global memory the data is stored in shared memory. We have to carefull while extracting data 
+from G memroy to not exceed max data limitation of the shared memory.
+
+
+mini matrix multiplication and adding together.
+
+*threads are resp for calling calling memory from global to shared memory
+*shared memory is shared with each block
+
+
+
+
+
+
+
+
+
+
+
+
+
