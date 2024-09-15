@@ -1,0 +1,14 @@
+Standard Attnetion
+
+load Q,k 
+S => Q.dot(K.T)
+save S
+Load S
+P = softmax(S)
+Save P
+load P, V
+O = PV
+save O
+
+
+We need dot product of  Q, K => Attnetion Score

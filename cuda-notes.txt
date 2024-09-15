@@ -1,7 +1,3 @@
-todos**
-create matrix multi from scrach using cuda
-revisit chaptre 1-3 and take notes
-
 ---------------NOTES---------------
 ***chapter-4 - Computer architecture and scheduling=>
 
